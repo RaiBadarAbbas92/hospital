@@ -18,7 +18,7 @@ export async function GET(
       JOIN patients p ON a.patient_id = p.id
       JOIN users u ON a.doctor_id = u.id
       JOIN departments d ON a.department_id = d.id
-      WHERE a.id = ${params.id}
+      WHERE a.appointment_id = ${params.id}
     `
 
     if (!appointment[0]) {
@@ -52,7 +52,7 @@ export async function PUT(
         status = ${status},
         notes = ${notes},
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${params.id}
+      WHERE appointment_id = ${params.id}
       RETURNING *
     `
 
