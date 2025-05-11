@@ -1,10 +1,27 @@
 import { sql } from "@/lib/db"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+
+type AppointmentResponse = {
+  id: number
+  appointment_id: string
+  patient_id: number
+  doctor_id: number
+  department_id: number
+  date: string
+  time: string
+  type: string
+  status: string
+  notes: string | null
+  patient_first_name: string
+  patient_last_name: string
+  doctor_name: string
+  department_name: string
+}
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   if (!params.id) {
     return NextResponse.json({ error: "Appointment ID is required" }, { status: 400 })
   }
@@ -12,10 +29,18 @@ export async function GET(
   try {
     const result = await sql`
       SELECT 
-        a.*,
+        a.id,
+        a.appointment_id,
+        a.patient_id,
+        a.doctor_id,
+        a.department_id,
+        a.date,
+        a.time,
+        a.type,
+        a.status,
+        a.notes,
         p.first_name as patient_first_name,
         p.last_name as patient_last_name,
-        p.patient_id,
         u.name as doctor_name,
         d.name as department_name
       FROM appointments a
@@ -24,32 +49,37 @@ export async function GET(
       LEFT JOIN departments d ON a.department_id = d.id
       WHERE a.appointment_id = ${params.id}
       LIMIT 1
-    `
+    ` as AppointmentResponse[]
 
-    if (!result || result.length === 0) {
+    if (!result?.[0]) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
 
     return NextResponse.json(result[0])
   } catch (error) {
     console.error("Error fetching appointment:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
+type UpdateAppointmentBody = {
+  date: string
+  time: string
+  type: string
+  status: string
+  notes?: string
+}
+
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   if (!params.id) {
     return NextResponse.json({ error: "Appointment ID is required" }, { status: 400 })
   }
 
   try {
-    const body = await request.json()
+    const body = await request.json() as UpdateAppointmentBody
     const { date, time, type, status, notes } = body
 
     if (!date || !time || !type || !status) {
@@ -70,18 +100,15 @@ export async function PUT(
         updated_at = CURRENT_TIMESTAMP
       WHERE appointment_id = ${params.id}
       RETURNING *
-    `
+    ` as AppointmentResponse[]
 
-    if (!result || result.length === 0) {
+    if (!result?.[0]) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
 
     return NextResponse.json(result[0])
   } catch (error) {
     console.error("Error updating appointment:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 } 
