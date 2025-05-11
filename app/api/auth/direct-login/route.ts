@@ -1,14 +1,11 @@
 import { sql } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import * as jose from "jose"
 
-// WARNING: This is for testing only and should be removed in production
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    // Find the admin user
     const users = await sql`
       SELECT id, name, email, role
       FROM users
@@ -28,33 +25,19 @@ export async function GET(request: Request) {
     }
 
     const user = users[0]
-
-    // Create a JWT token using jose
-    const secret = new TextEncoder().encode(JWT_SECRET)
-    const token = await new jose.SignJWT({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("24h")
-      .sign(secret)
-
-    // Set the token in a cookie
-    cookies().set({
+    const cookieStore = cookies()
+    cookieStore.set({
       name: "auth_token",
-      value: token,
+      value: "admin-token",
       httpOnly: true,
       path: "/",
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24,
       sameSite: "strict",
     })
 
     return NextResponse.json({
       success: true,
-      message: "Direct login successful. You are now logged in as admin.",
+      message: "Direct login successful",
       user: {
         id: user.id,
         name: user.name,
@@ -69,7 +52,6 @@ export async function GET(request: Request) {
       {
         success: false,
         error: "An error occurred during direct login",
-        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     )
